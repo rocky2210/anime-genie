@@ -6,6 +6,11 @@ import {
 	getSurprisePreset,
 } from "./surprise.js";
 import {
+	initSurpriseHistoryUI,
+	addSurpriseHistoryEntry,
+	setSurpriseHistoryMode,
+} from "./surprise-history.js";
+import {
 	STATUS_OPTIONS,
 	ANIME_FORMATS,
 	MANGA_FORMATS,
@@ -1287,6 +1292,8 @@ async function rollSurprise(avoidId) {
 
 		state.result = winner;
 
+		addSurpriseHistoryEntry(winner, getSurprisePreset().label);
+
 		if (resultArea) {
 			resultArea.innerHTML = resultCard(winner);
 		}
@@ -1698,6 +1705,8 @@ function setMode(mode) {
 		randomPanel.classList.toggle("hidden", state.mode !== "random");
 	}
 
+	setSurpriseHistoryMode(state.mode);
+
 	if (resultArea) {
 		resultArea.innerHTML = "";
 	}
@@ -1805,6 +1814,29 @@ function initializeApp() {
 			}
 
 			renderPoolState();
+		},
+
+		refreshIcons,
+	});
+
+	initSurpriseHistoryUI({
+		mode: state.mode,
+
+		onShow: (entry) => {
+			setMode("random");
+
+			state.result = entry;
+			state.loading = false;
+			state.spinning = false;
+
+			const resultArea = $("#result-area");
+
+			if (resultArea) {
+				resultArea.innerHTML = resultCard(entry);
+			}
+
+			renderPoolState();
+			refreshIcons();
 		},
 
 		refreshIcons,
