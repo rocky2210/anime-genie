@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>anime genie</title>
+  <meta name="description" content="Randomly pick anime, manga or manhwa from AniList, MyAnimeList and Kitsu.">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="./favicon.svg">
+  <!-- Cascadia Code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cascadia+Code:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: [
+              '"Cascadia Code"',
+              'Consolas',
+              '"Courier New"',
+              'monospace'
+            ]
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@2.0.6"></script>
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+
+
+<body>
+  <nav class="border-b border-zinc-900 bg-zinc-950/80">
+    <div class="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 text-sm sm:px-6">
+      <a href="./index.html" class="inline-flex items-center gap-2 font-bold text-zinc-100"
+        aria-label="anime-genie home">
+        <i data-lucide="sparkles" class="size-4 text-emerald-400"></i>
+        anime genie
+      </a>
+    </div>
+  </nav>
+
+  <main class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+    <header class="text-center">
+
+      <span
+        class="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-4 py-1.5 text-xs font-medium text-zinc-400">
+
+        <i data-lucide="shuffle" class="size-3.5"></i>
+
+        Multiple public anime & manga data sources
+
+      </span>
+
+
+      <h1 class="mt-5 text-4xl font-bold tracking-tight text-zinc-100 sm:text-6xl">
+        anime genie
+      </h1>
+
+
+      <p class="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-zinc-500 sm:text-base">
+        Can't decide what to watch or read?
+        Let your list decide.
+      </p>
+
+    </header>
+
+
+    <!-- =====================================================
+         MAIN GRID
+    ====================================================== -->
+
+    <div class="mt-10 grid gap-6 lg:grid-cols-[1fr_1.05fr] lg:items-start">
+
+
+      <!-- ===================================================
+           LEFT SIDE
+      ==================================================== -->
+
+      <div class="space-y-6">
+
+
+        <!-- =================================================
+             DATA SOURCE + USER SEARCH
+        ================================================== -->
+
+        <section class="space-y-5 rounded-2xl glass p-5">
+
+          <div class="source-tabs" role="tablist" aria-label="Picker mode">
+
+            <button id="user-search-tab" type="button" class="source-tab active" data-source-tab="user" role="tab"
+              aria-selected="true" aria-controls="user-search-panel">
+              <i data-lucide="user-search" class="size-4"></i>
+              User Search
+            </button>
+
+            <button id="random-pick-tab" type="button" class="source-tab" data-source-tab="random" role="tab"
+              aria-selected="false" aria-controls="random-pick-panel">
+              <i data-lucide="sparkles" class="size-4"></i>
+              Random Pick
+            </button>
+
+          </div>
+
+
+          <div id="user-search-panel" class="space-y-5" role="tabpanel" aria-labelledby="user-search-tab">
+
+
+            <!-- ===============================
+               DATA SOURCE
+          ================================ -->
+
+            <div class="space-y-3">
+
+              <div class="flex items-center justify-between">
+
+                <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                  Data Source
+                </h2>
+
+              </div>
+
+
+              <div class="relative">
+
+                <!-- Database icon -->
+
+                <i data-lucide="database"
+                  class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500"></i>
+
+                <!-- Provider dropdown -->
+
+                <select id="provider-select"
+                  class="w-full appearance-none rounded-lg border border-zinc-800 bg-zinc-950 py-3 pl-10 pr-10 text-sm text-zinc-200 outline-none transition focus:border-emerald-500/50">
+
+                  <option value="anilist">
+                    AniList
+                  </option>
+
+                  <option value="mal">
+                    MyAnimeList
+                  </option>
+
+                  <option value="kitsu">
+                    Kitsu
+                  </option>
+
+                </select>
+
+                <!-- Dropdown icon -->
+                <i data-lucide="chevron-down"
+                  class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-600"></i>
+              </div>
+
+
+              <!-- Provider description -->
+              <p id="provider-note" class="text-xs leading-relaxed text-zinc-600">
+                Direct AniList GraphQL API.
+              </p>
+            </div>
+
+
+
+            <!-- =============================================
+               USER SEARCH TITLE
+          ============================================== -->
+
+            <div>
+
+              <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Search Username
+              </h2>
+
+            </div>
+
+
+
+            <!-- =============================================
+               USER SEARCH FORM
+          ============================================== -->
+
+            <form id="user-search-form" class="flex flex-col gap-3 sm:flex-row">
+
+              <!-- Search input -->
+
+              <div class="relative flex-1">
+
+                <i data-lucide="search"
+                  class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-zinc-600"></i>
+
+
+                <input id="username-input" type="text" autocomplete="off" spellcheck="false"
+                  placeholder="Enter username..."
+                  class="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-3.5 pl-11 pr-4 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-700 focus:border-emerald-500/50">
+
+              </div>
+
+
+              <!-- Search button -->
+
+              <button id="search-btn" type="submit"
+                class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-6 py-3.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
+
+                <i id="search-icon" data-lucide="search" class="size-4"></i>
+
+                <span>
+                  Search
+                </span>
+
+              </button>
+
+            </form>
+
+
+            <!-- Search error / information -->
+
+            <div id="search-message"></div>
+
+
+            <!-- User results -->
+
+            <div id="user-results"></div>
+
+          </div>
+
+
+          <div id="random-pick-panel" class="hidden" role="tabpanel" aria-labelledby="random-pick-tab">
+            <div id="surprise-random-root"></div>
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             MEDIA + STATUS
+        ================================================== -->
+
+        <section class="space-y-5 rounded-2xl glass p-5">
+
+
+          <!-- MEDIA -->
+
+          <div class="space-y-3">
+
+            <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Media
+            </h2>
+
+
+            <div id="media-chips" class="flex flex-wrap gap-2"></div>
+
+          </div>
+
+
+
+          <!-- STATUS -->
+
+          <div id="status-filter-section" class="space-y-3">
+
+            <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              Status
+            </h2>
+
+
+            <div id="status-chips" class="flex flex-wrap gap-2"></div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             ADVANCED FILTERS
+        ================================================== -->
+
+        <section class="overflow-hidden rounded-2xl glass">
+
+          <button id="advanced-toggle" type="button"
+            class="flex w-full items-center justify-between gap-3 px-5 py-4 text-left transition hover:bg-white/[.03]"
+            aria-expanded="false">
+
+            <span class="flex items-center gap-3 text-sm font-semibold text-zinc-200">
+
+              <i data-lucide="sliders-horizontal" class="size-4 text-emerald-400"></i>
+
+              Advanced Filters
+
+
+              <span id="active-count"
+                class="hidden rounded-md bg-emerald-400/10 px-2 py-0.5 text-xs font-semibold text-emerald-300"></span>
+
+            </span>
+
+
+            <i id="chevron" data-lucide="chevron-down" class="size-4 text-zinc-600 transition-transform"></i>
+
+          </button>
+
+
+          <div id="advanced-filters" class="hidden space-y-7 border-t border-zinc-800 px-5 py-6"></div>
+
+        </section>
+
+      </div>
+
+
+
+      <!-- ===================================================
+           RIGHT SIDE
+      ==================================================== -->
+
+      <div class="space-y-6 lg:sticky lg:top-8">
+
+
+        <!-- =================================================
+             GENERATE PANEL
+        ================================================== -->
+
+        <section class="rounded-2xl glass p-6 text-center">
+
+          <button id="generate-btn" type="button" disabled
+            class="inline-flex w-full items-center justify-center gap-3 rounded-lg bg-emerald-400 px-8 py-5 text-lg font-bold uppercase tracking-wide text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-40">
+
+            <i id="generate-icon" data-lucide="dices" class="size-6"></i>
+
+            <span id="generate-text">
+              Generate Random
+            </span>
+
+          </button>
+
+
+          <!-- Pool message -->
+
+          <p id="pool-message" class="mt-4 text-sm text-zinc-500">
+            Search and select a user to begin.
+          </p>
+
+
+          <!-- Cache information -->
+
+          <p id="cache-message" class="mt-1 text-xs text-zinc-700"></p>
+
+        </section>
+        <!-- Result -->
+        <div id="result-area"></div>
+
+      </div>
+
+    </div>
+
+
+    <footer class="mt-14 text-center text-xs text-zinc-700">
+      <span class="inline-flex items-center gap-2">
+        <i data-lucide="shield-check" class="size-3.5"></i>
+        Public API data only — no passwords or API secrets
+        stored in this frontend.
+      </span>
+      <p class="mt-3">
+        © 2026 anime-genie
+      </p>
+    </footer>
+
+  </main>
+
+  <script>
+
+    window.addEventListener(
+      "DOMContentLoaded",
+      () => {
+
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+
+      }
+    );
+
+  </script>
+
+  <script type="module" src="./js/app.js"></script>
+
+
+</body>
+
+</html>
