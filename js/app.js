@@ -982,6 +982,65 @@ function stripHtml(text) {
 		.trim();
 }
 
+let copyToastTimer;
+
+function showCopyToast() {
+	const toast = document.querySelector("#copy-toast");
+
+	if (!toast) return;
+
+	toast.classList.add("visible");
+	toast.setAttribute("aria-hidden", "false");
+	clearTimeout(copyToastTimer);
+
+	copyToastTimer = setTimeout(() => {
+		toast.classList.remove("visible");
+		toast.setAttribute("aria-hidden", "true");
+	}, 2200);
+}
+
+async function copyTitle() {
+	if (!state.result) return;
+
+	const media = state.result.media;
+	const title =
+		media.title?.english ??
+		media.title?.romaji ??
+		media.title?.native ??
+		"Untitled";
+
+	try {
+		if (navigator.clipboard) {
+			await navigator.clipboard.writeText(title);
+		} else {
+			const input = document.createElement("textarea");
+			input.value = title;
+			input.setAttribute("readonly", "");
+			input.style.position = "fixed";
+			input.style.opacity = "0";
+			document.body.appendChild(input);
+			input.select();
+			document.execCommand("copy");
+			input.remove();
+		}
+
+		const button = document.querySelector('[data-result-action="copy-title"]');
+
+		if (button) {
+			button.title = "Title copied";
+			button.setAttribute("aria-label", "Title copied");
+			setTimeout(() => {
+				button.title = "Copy title";
+				button.setAttribute("aria-label", "Copy title");
+			}, 1500);
+		}
+
+		showCopyToast();
+	} catch (error) {
+		console.error("Could not copy title.", error);
+	}
+}
+
 /* =========================================================
    RESULT CARD
 ========================================================= */
@@ -1071,9 +1130,23 @@ function resultCard(entry) {
               ${esc(providerLabel)}
             </div>
 
-            <h3 class="text-2xl font-bold leading-tight text-white sm:text-3xl">
-              ${esc(title)}
-            </h3>
+						<div class="flex items-start gap-3">
+
+							<h3 class="min-w-0 flex-1 text-2xl font-bold leading-tight text-white sm:text-3xl">
+								${esc(title)}
+							</h3>
+
+							<button
+								type="button"
+								data-result-action="copy-title"
+								title="Copy title"
+								aria-label="Copy title"
+								class="inline-flex shrink-0 rounded-lg border border-white/10 bg-white/[.04] p-2 text-slate-400 transition hover:bg-white/[.08] hover:text-white"
+							>
+								<i data-lucide="copy" class="size-4"></i>
+							</button>
+
+						</div>
 
             ${
 							subtitle
@@ -1602,6 +1675,8 @@ document.addEventListener("click", (event) => {
 			roll(state.result?.media?.id);
 		} else if (action === "share") {
 			shareResult();
+		} else if (action === "copy-title") {
+			copyTitle();
 		}
 
 		return;

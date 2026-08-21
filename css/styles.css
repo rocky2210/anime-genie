@@ -58,6 +58,29 @@ body:before {
   box-shadow: 0 0 0 1px var(--green-line);
 }
 
+.copy-toast {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  z-index: 50;
+  padding: .6rem .85rem;
+  border: 1px solid var(--green-line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  color: var(--green);
+  font-size: .78rem;
+  font-weight: 700;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -.5rem);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.copy-toast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 .chip {
   border: 1px solid var(--line);
   border-radius: 6px;
