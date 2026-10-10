@@ -9,51 +9,51 @@ const MEDIA_FIELDS = `
 
 const DISCOVER_MEDIA = `
   query DiscoverMedia(
-    $page: Int!
-    $perPage: Int!
-    $type: MediaType!
-    $sort: [MediaSort]
-    $format_in: [MediaFormat]
-    $genre_in: [String]
-    $countryOfOrigin: CountryCode
-    $averageScore_greater: Int
-    $averageScore_lesser: Int
-    $startDate_greater: FuzzyDateInt
-    $startDate_lesser: FuzzyDateInt
-    $episodes_greater: Int
-    $episodes_lesser: Int
-    $chapters_greater: Int
-    $chapters_lesser: Int
-    $volumes_greater: Int
-    $volumes_lesser: Int
-    $popularity_lesser: Int
-    $status: MediaStatus
+	$page: Int!
+	$perPage: Int!
+	$type: MediaType!
+	$sort: [MediaSort]
+	$format_in: [MediaFormat]
+	$genre_in: [String]
+	$countryOfOrigin: CountryCode
+	$averageScore_greater: Int
+	$averageScore_lesser: Int
+	$startDate_greater: FuzzyDateInt
+	$startDate_lesser: FuzzyDateInt
+	$episodes_greater: Int
+	$episodes_lesser: Int
+	$chapters_greater: Int
+	$chapters_lesser: Int
+	$volumes_greater: Int
+	$volumes_lesser: Int
+	$popularity_lesser: Int
+	$status: MediaStatus
   ) {
-    Page(page: $page, perPage: $perPage) {
-      pageInfo { lastPage hasNextPage }
-      media(
-        type: $type
-        sort: $sort
-        format_in: $format_in
-        genre_in: $genre_in
-        countryOfOrigin: $countryOfOrigin
-        averageScore_greater: $averageScore_greater
-        averageScore_lesser: $averageScore_lesser
-        startDate_greater: $startDate_greater
-        startDate_lesser: $startDate_lesser
-        episodes_greater: $episodes_greater
-        episodes_lesser: $episodes_lesser
-        chapters_greater: $chapters_greater
-        chapters_lesser: $chapters_lesser
-        volumes_greater: $volumes_greater
-        volumes_lesser: $volumes_lesser
-        popularity_lesser: $popularity_lesser
-        status: $status
-        isAdult: false
-      ) {
-        ${MEDIA_FIELDS}
-      }
-    }
+	Page(page: $page, perPage: $perPage) {
+	  pageInfo { lastPage hasNextPage }
+	  media(
+		type: $type
+		sort: $sort
+		format_in: $format_in
+		genre_in: $genre_in
+		countryOfOrigin: $countryOfOrigin
+		averageScore_greater: $averageScore_greater
+		averageScore_lesser: $averageScore_lesser
+		startDate_greater: $startDate_greater
+		startDate_lesser: $startDate_lesser
+		episodes_greater: $episodes_greater
+		episodes_lesser: $episodes_lesser
+		chapters_greater: $chapters_greater
+		chapters_lesser: $chapters_lesser
+		volumes_greater: $volumes_greater
+		volumes_lesser: $volumes_lesser
+		popularity_lesser: $popularity_lesser
+		status: $status
+		isAdult: false
+	  ) {
+		${MEDIA_FIELDS}
+	  }
+	}
   }
 `;
 
@@ -213,23 +213,23 @@ function renderPresetNote() {
 	const facts = presetFacts(preset);
 
 	note.innerHTML = `
-    <p>${esc(preset.description)}</p>
-    ${
+	<p>${esc(preset.description)}</p>
+	${
 			facts.length
 				? `
-          <dl>
-            ${facts
+		  <dl>
+			${facts
 							.map(
 								([label, value]) => `
-                  <div>
-                    <dt>${esc(label)}:</dt>
-                    <dd>${esc(value)}</dd>
-                  </div>
-                `
+				  <div>
+					<dt>${esc(label)}:</dt>
+					<dd>${esc(value)}</dd>
+				  </div>
+				`
 							)
 							.join("")}
-          </dl>
-        `
+		  </dl>
+		`
 				: ""
 		}
   `;
@@ -242,18 +242,18 @@ function renderPresets() {
 
 	root.innerHTML = SURPRISE_PRESETS.map(
 		(preset) => `
-        <button
-          type="button"
-          class="surprise-preset ${
+		<button
+		  type="button"
+		  class="surprise-preset ${
 						preset.id === activePresetId ? "active" : ""
 					}"
-          data-surprise-preset="${esc(preset.id)}"
-          title="${esc(preset.description)}"
-        >
-          <i data-lucide="${esc(preset.icon)}" class="size-4"></i>
-          <span>${esc(preset.label)}</span>
-        </button>
-      `
+		  data-surprise-preset="${esc(preset.id)}"
+		  title="${esc(preset.description)}"
+		>
+		  <i data-lucide="${esc(preset.icon)}" class="size-4"></i>
+		  <span>${esc(preset.label)}</span>
+		</button>
+	  `
 	).join("");
 
 	renderPresetNote();
@@ -278,19 +278,19 @@ export async function initSurpriseUI({ onChange, refreshIcons } = {}) {
 		root.innerHTML = await res.text();
 	} catch {
 		root.innerHTML = `
-      <div class="space-y-4">
-        <div>
-          <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            Random Pick
-          </h2>
-          <p class="mt-2 text-xs leading-relaxed text-zinc-600">
-            Uses AniList discovery with the selected media type and preset below.
-          </p>
-        </div>
-        <div id="surprise-presets" class="surprise-presets"></div>
-        <div id="surprise-preset-note" class="surprise-note"></div>
-      </div>
-    `;
+	  <div class="space-y-4">
+		<div>
+		  <h2 class="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+			Random Pick
+		  </h2>
+		  <p class="mt-2 text-xs leading-relaxed text-zinc-600">
+			Uses AniList discovery with the selected media type and preset below.
+		  </p>
+		</div>
+		<div id="surprise-presets" class="surprise-presets"></div>
+		<div id="surprise-preset-note" class="surprise-note"></div>
+	  </div>
+	`;
 	}
 
 	renderPresets();

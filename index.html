@@ -54,8 +54,20 @@
       </a>
     </div>
   </nav>
+
+  <div class="mx-auto w-full max-w-6xl px-4 pt-5 sm:px-6">
+    <div class="app-navigation" role="tablist" aria-label="Anime Genie sections">
+      <button class="app-nav-tab active" id="picker-nav-tab" type="button" role="tab" aria-selected="true" aria-controls="picker-view" data-app-view="picker">
+        <i data-lucide="shuffle" class="size-4"></i><span>Anime Picker</span>
+      </button>
+      <button class="app-nav-tab" id="catchup-nav-tab" type="button" role="tab" aria-selected="false" aria-controls="catchup-view" data-app-view="catchup">
+        <i data-lucide="calendar-clock" class="size-4"></i><span>Catch-Up</span>
+      </button>
+    </div>
+  </div>
   
-  <main class="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+  <main class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
+    <section id="picker-view" data-app-panel="picker" role="tabpanel" aria-labelledby="picker-nav-tab">
 
     <!-- =====================================================
            HEADER
@@ -366,7 +378,34 @@
       </div>
 
     </div>
+    </section>
 
+    <section id="catchup-view" data-app-panel="catchup" role="tabpanel" aria-labelledby="catchup-nav-tab" hidden>
+      <header class="mb-8">
+        <span class="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-400">
+          <i data-lucide="calendar-clock" class="size-3.5"></i> AniList sequel tracker
+        </span>
+        <h1 class="mt-4 text-3xl font-bold tracking-tight text-zinc-100 sm:text-4xl">Anime Catch-Up</h1>
+        <p class="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-500">Find released sequels and upcoming seasons related to anime on your AniList list, so you don't miss what comes next.</p>
+      </header>
+
+      <section class="glass rounded-2xl p-5 sm:p-6">
+        <form id="catchup-form" class="flex flex-col gap-3 sm:flex-row">
+          <label class="sr-only" for="catchup-username">AniList username</label>
+          <div class="relative flex-1">
+            <i data-lucide="user-round" class="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-zinc-500"></i>
+            <input id="catchup-username" name="username" autocomplete="off" spellcheck="false" required placeholder="Enter your AniList username..." class="w-full rounded-lg border border-zinc-800 bg-zinc-950 py-3.5 pl-10 pr-4 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-600 focus:border-emerald-500/50">
+          </div>
+          <button id="catchup-submit" type="submit" class="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-400 px-5 py-3.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
+            <i data-lucide="scan-search" class="size-4"></i><span>Find Seasons</span>
+          </button>
+        </form>
+        <p class="mt-3 text-xs leading-relaxed text-zinc-600">Public AniList lists only. No login, password, OAuth token, or API key is needed.</p>
+        <div id="catchup-message" class="mt-4" role="status" aria-live="polite"></div>
+      </section>
+
+      <div id="catchup-results" class="mt-8 space-y-10"></div>
+    </section>
 
     <footer class="mt-14 text-center text-xs text-zinc-700">
       <span class="inline-flex items-center gap-2">
@@ -401,6 +440,7 @@
   </script>
 
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/catchup.js"></script>
 
 
 </body>

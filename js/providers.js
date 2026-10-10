@@ -132,7 +132,7 @@ async function jikan(path, params = {}, attempt = 0) {
 	}
 
 	/* -------------------------------------------------------
-     RATE LIMIT
+	 RATE LIMIT
   ------------------------------------------------------- */
 
 	if (res.status === 429) {
@@ -156,7 +156,7 @@ async function jikan(path, params = {}, attempt = 0) {
 	}
 
 	/* -------------------------------------------------------
-     TEMPORARY SERVER ERRORS
+	 TEMPORARY SERVER ERRORS
   ------------------------------------------------------- */
 
 	if ([500, 502, 503, 504].includes(res.status) && attempt < 3) {
@@ -166,7 +166,7 @@ async function jikan(path, params = {}, attempt = 0) {
 	}
 
 	/* -------------------------------------------------------
-     OTHER HTTP ERRORS
+	 OTHER HTTP ERRORS
   ------------------------------------------------------- */
 
 	if (!res.ok) {
@@ -186,7 +186,7 @@ async function jikan(path, params = {}, attempt = 0) {
 	}
 
 	/* -------------------------------------------------------
-     JSON RESPONSE
+	 JSON RESPONSE
   ------------------------------------------------------- */
 
 	try {
@@ -1043,7 +1043,7 @@ function normalizeKitsu(entry, raw, type) {
 
 export const Providers = {
 	/* -------------------------------------------------------
-     ANILIST
+	 ANILIST
   ------------------------------------------------------- */
 
 	anilist: {
@@ -1065,7 +1065,7 @@ export const Providers = {
 	},
 
 	/* -------------------------------------------------------
-     MYANIMELIST
+	 MYANIMELIST
   ------------------------------------------------------- */
 
 	mal: {
@@ -1093,7 +1093,7 @@ export const Providers = {
 	},
 
 	/* -------------------------------------------------------
-     KITSU
+	 KITSU
   ------------------------------------------------------- */
 
 	kitsu: {
