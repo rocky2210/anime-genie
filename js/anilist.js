@@ -13,7 +13,10 @@ const SEARCH_USERS = `
       users(search: $search) {
         id name about(asHtml: false) bannerImage siteUrl
         avatar { large medium }
-        statistics { anime { count meanScore } manga { count meanScore } }
+        statistics {
+          anime { count meanScore }
+          manga { count meanScore }
+        }
       }
     }
   }
@@ -24,164 +27,292 @@ const GET_USER = `
     User(name: $name) {
       id name about(asHtml: false) bannerImage siteUrl
       avatar { large medium }
-      statistics { anime { count meanScore } manga { count meanScore } }
+      statistics {
+        anime { count meanScore }
+        manga { count meanScore }
+      }
     }
   }
 `;
 
-const MEDIA_LIST_PAGE = `
-  query MediaListPage($userId: Int!, $type: MediaType!, $page: Int!) {
-    Page(page: $page, perPage: 50) {
-      pageInfo { currentPage hasNextPage }
-      mediaList(userId: $userId, type: $type, sort: MEDIA_ID) {
-        id status score(format: POINT_100) progress
-        media { ${MEDIA_FIELDS} }
+// MediaListCollection supports chunk-based retrieval.
+// hasNextChunk tells us whether more entries remain.
+const MEDIA_LIST_COLLECTION = `
+  query MediaListCollectionPage(
+    $userId: Int!
+    $type: MediaType!
+    $chunk: Int!
+    $perChunk: Int!
+  ) {
+    MediaListCollection(
+      userId: $userId
+      type: $type
+      chunk: $chunk
+      perChunk: $perChunk
+    ) {
+      hasNextChunk
+      lists {
+        entries {
+          id status score(format: POINT_100) progress
+          media {
+            ${MEDIA_FIELDS}
+          }
+        }
       }
     }
   }
 `;
 
 export class AniListError extends Error {
-	constructor(message, status = 500) {
-		super(message);
-		this.status = status;
-	}
+  constructor(message, status = 500) {
+    super(message);
+    this.name = "AniListError";
+    this.status = status;
+  }
 }
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
 const responseCache = new Map();
 const inflight = new Map();
 
-export async function gql(query, variables, attempt = 0) {
-	const key = JSON.stringify([query, variables]);
-	if (inflight.has(key)) return inflight.get(key);
+const CACHE_TTL = 60 * 60 * 1000;
+const USER_CACHE_TTL = 5 * 60 * 1000;
 
-	const request = (async () => {
-		let res;
-		try {
-			res = await fetch(ENDPOINT, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					Accept: "application/json",
-				},
-				body: JSON.stringify({ query, variables }),
-			});
-		} catch {
-			throw new AniListError(
-				"AniList is temporarily unavailable. Please try again.",
-				0
-			);
-		}
+// Keep one request per identical query/variables pair.
+// Retry within the request operation instead of recursively
+// calling gql(), which can deadlock on its own in-flight promise.
+export async function gql(query, variables, maxAttempts = 5) {
+  const key = JSON.stringify([query, variables]);
 
-		// Do not hammer AniList while rate limited. Honor Retry-After once.
-		if (res.status === 429) {
-			const retryAfter = Number(res.headers.get("retry-after"));
-			if (
-				attempt === 0 &&
-				Number.isFinite(retryAfter) &&
-				retryAfter > 0 &&
-				retryAfter <= 10
-			) {
-				await sleep(retryAfter * 1000);
-				return gql(query, variables, 1);
-			}
-			throw new AniListError(
-				"AniList rate limit reached. Please wait a moment and try again.",
-				429
-			);
-		}
+  if (inflight.has(key)) {
+    return inflight.get(key);
+  }
 
-		if (res.status >= 500 && attempt < 2) {
-			await sleep(1000 * (attempt + 1));
-			return gql(query, variables, attempt + 1);
-		}
+  const request = (async () => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      let res;
 
-		let json;
-		try {
-			json = await res.json();
-		} catch {
-			throw new AniListError(
-				"AniList is temporarily unavailable. Please try again.",
-				res.status
-			);
-		}
+      try {
+        res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ query, variables }),
+        });
+      } catch {
+        if (attempt === maxAttempts - 1) {
+          throw new AniListError(
+            "Cannot connect to AniList. Check your connection and try again.",
+            0
+          );
+        }
 
-		if (json.errors?.length) {
-			const first = json.errors[0];
-			throw new AniListError(
-				first?.message || "AniList request failed",
-				first?.status ?? res.status
-			);
-		}
-		if (!json.data)
-			throw new AniListError(
-				"AniList returned no data. Please try again.",
-				res.status
-			);
-		return json.data;
-	})();
+        await sleep(Math.min(1000 * 2 ** attempt, 15000));
+        continue;
+      }
 
-	inflight.set(key, request);
-	try {
-		return await request;
-	} finally {
-		inflight.delete(key);
-	}
+      if (res.status === 429 || res.status >= 500) {
+        if (attempt === maxAttempts - 1) {
+          throw new AniListError(
+            res.status === 429
+              ? "AniList rate limit reached. Please wait and try again."
+              : "AniList server is temporarily unavailable.",
+            res.status
+          );
+        }
+
+        const retryHeader = Number(
+          res.headers.get("Retry-After")
+        );
+
+        const delay =
+          res.status === 429
+            ? Number.isFinite(retryHeader) && retryHeader > 0
+              ? retryHeader * 1000
+              : Math.min(60000, 5000 * 2 ** attempt)
+            : Math.min(15000, 1000 * 2 ** attempt);
+
+        await sleep(delay);
+        continue;
+      }
+
+      let json;
+
+      try {
+        json = await res.json();
+      } catch {
+        throw new AniListError(
+          "AniList returned an invalid response.",
+          res.status
+        );
+      }
+
+      if (json.errors?.length) {
+        const first = json.errors[0];
+        const message =
+          first?.message || "AniList GraphQL request failed.";
+
+        // Some GraphQL errors may arrive with HTTP 200.
+        const rateLimited =
+          first?.status === 429 ||
+          /rate.?limit|too many requests/i.test(message);
+
+        if (rateLimited && attempt < maxAttempts - 1) {
+          await sleep(Math.min(60000, 5000 * 2 ** attempt));
+          continue;
+        }
+
+        throw new AniListError(
+          message,
+          rateLimited ? 429 : first?.status ?? res.status
+        );
+      }
+
+      if (!res.ok || !json.data) {
+        throw new AniListError(
+          "AniList returned no usable data.",
+          res.status
+        );
+      }
+
+      return json.data;
+    }
+
+    throw new AniListError("AniList request failed.");
+  })();
+
+  inflight.set(key, request);
+
+  try {
+    return await request;
+  } finally {
+    inflight.delete(key);
+  }
 }
 
 export async function searchUsers(search) {
-	const term = search.trim();
-	if (!term) return [];
+  const term = search.trim();
+  if (!term) return [];
 
-	const key = `users:${term.toLowerCase()}`;
-	const cached = responseCache.get(key);
-	if (cached && cached.expires > Date.now()) return cached.value;
+  const cacheKey = `users:${term.toLowerCase()}`;
+  const cached = responseCache.get(cacheKey);
 
-	const [pageResult, exact] = await Promise.all([
-		gql(SEARCH_USERS, { search: term }).catch((e) =>
-			e.status === 429 ? Promise.reject(e) : null
-		),
-		gql(GET_USER, { name: term }).catch((e) =>
-			e.status === 429 ? Promise.reject(e) : null
-		),
-	]);
+  if (cached && cached.expires > Date.now()) {
+    return cached.value;
+  }
 
-	const users = [];
-	if (exact?.User) users.push(exact.User);
-	for (const u of pageResult?.Page?.users ?? []) {
-		if (u && !users.some((x) => x.id === u.id)) users.push(u);
-	}
+  // Preserve both exact lookup and search suggestions.
+  const [pageResult, exact] = await Promise.all([
+    gql(SEARCH_USERS, { search: term }).catch((error) => {
+      if (error.status === 429) throw error;
+      return null;
+    }),
+    gql(GET_USER, { name: term }).catch((error) => {
+      if (error.status === 429) throw error;
+      return null;
+    }),
+  ]);
 
-	responseCache.set(key, { value: users, expires: Date.now() + 5 * 60_000 });
-	return users;
+  const users = [];
+
+  if (exact?.User) {
+    users.push(exact.User);
+  }
+
+  for (const user of pageResult?.Page?.users ?? []) {
+    if (user && !users.some((item) => item.id === user.id)) {
+      users.push(user);
+    }
+  }
+
+  responseCache.set(cacheKey, {
+    value: users,
+    expires: Date.now() + USER_CACHE_TTL,
+  });
+
+  return users;
 }
 
+// Fetch the complete list, combining all chunks and all status lists.
+// Calls for the same user's list share one in-progress operation.
 export async function fetchMediaList(userId, type, onProgress) {
-	const cacheKey = `media:${userId}:${type}`;
-	const cached = responseCache.get(cacheKey);
-	if (cached && cached.expires > Date.now()) return cached.value;
+  const cacheKey = `media:${userId}:${type}`;
 
-	const entries = [];
-	let page = 1;
-	for (;;) {
-		const data = await gql(MEDIA_LIST_PAGE, { userId, type, page });
-		for (const entry of data.Page.mediaList ?? [])
-			if (entry?.media) entries.push(entry);
-		onProgress?.(
-			page,
-			data.Page.pageInfo?.hasNextPage ?? false,
-			entries.length
-		);
-		if (!data.Page.pageInfo?.hasNextPage || page >= 60) break;
-		page++;
-		await sleep(120);
-	}
+  const cached = responseCache.get(cacheKey);
+  if (cached && cached.expires > Date.now()) {
+    onProgress?.(1, false, cached.value.length);
+    return cached.value;
+  }
 
-	// React version effectively keeps media lists cached for the session.
-	responseCache.set(cacheKey, {
-		value: entries,
-		expires: Date.now() + 60 * 60_000,
-	});
-	return entries;
+  // Deduplicate the entire list download, not just individual requests.
+  const flightKey = `complete:${cacheKey}`;
+
+  if (inflight.has(flightKey)) {
+    return inflight.get(flightKey);
+  }
+
+  const operation = (async () => {
+    const entries = [];
+    let chunk = 1;
+    let hasNextChunk = true;
+
+    // Request up to 500 entries per chunk.
+    // If AniList rejects that size, lower PER_CHUNK to 100.
+    const PER_CHUNK = 500;
+
+    while (hasNextChunk) {
+      const data = await gql(MEDIA_LIST_COLLECTION, {
+        userId: Number(userId),
+        type,
+        chunk,
+        perChunk: PER_CHUNK,
+      });
+
+      const collection = data?.MediaListCollection;
+
+      if (!collection) {
+        throw new AniListError(
+          "AniList returned no media list collection."
+        );
+      }
+
+      for (const list of collection.lists ?? []) {
+        for (const entry of list.entries ?? []) {
+          if (entry?.media) {
+            entries.push(entry);
+          }
+        }
+      }
+
+      hasNextChunk = collection.hasNextChunk === true;
+
+      onProgress?.(chunk, hasNextChunk, entries.length);
+
+      if (hasNextChunk) {
+        chunk++;
+        // Avoid immediately sending the next request.
+        await sleep(1500);
+      }
+    }
+
+    // Cache only after every chunk has been retrieved successfully.
+    responseCache.set(cacheKey, {
+      value: entries,
+      expires: Date.now() + CACHE_TTL,
+    });
+
+    return entries;
+  })();
+
+  inflight.set(flightKey, operation);
+
+  try {
+    return await operation;
+  } finally {
+    inflight.delete(flightKey);
+  }
 }
